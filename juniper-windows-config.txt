@@ -1,0 +1,557 @@
+﻿Windows Router route commands:
+route -p add 192.168.10.0 mask 255.255.255.0 192.168.137.2 metric 1
+route -p add 192.168.10.1 mask 255.255.255.255 192.168.137.2 metric 1
+route -p add 192.168.20.0 mask 255.255.255.0 192.168.137.2 metric 1
+route -p add 192.168.20.1 mask 255.255.255.255 192.168.137.2 metric 1
+
+
+admin@FORD-JUN-SW1> show configuration
+## Last commit: 2024-08-16 14:19:41 UTC by admin
+version 20.4R3.8;
+system {
+    host-name FORD-JUN-SW1;
+    root-authentication {
+        encrypted-password "******"; ## SECRET-DATA
+    }
+    login {
+        retry-options {
+            tries-before-disconnect 3;
+            backoff-threshold 3;
+            backoff-factor 5;
+        }
+        user admin {
+            uid 2000;
+            class super-user;
+            authentication {
+                encrypted-password "$6$JaW2LOQd$t59nP2rTvONBqnx5v09r8jDSaox0PZ9778zDTt41rOMVRkXQOGWd9YjreHdSPd8YvT5jxqN35c5qn49oJqyIK/"; ## SECRET-DATA
+            }
+        }
+        user viewer {
+            uid 2001;
+            class read-only;
+            authentication {
+                encrypted-password "$6$o8qF6j9A$PjOFnrz.iJGVC50p3FGZtp/.g01P7MZBZbSdbbve8FR/XbaOrHmsitGPng7ljiy5avBG7KEBHizZvvAQmp6MQ/"; ## SECRET-DATA
+            }
+        }
+    }
+    services {
+        ssh {
+            root-login deny;
+            protocol-version v2;
+        }
+        dhcp-local-server {
+            traceoptions { ## Warning: 'traceoptions' is deprecated
+                file jdhcplog;
+                flag all;
+            }
+            group ezsetup-ge0 {
+                interface ge-0/0/0.0;
+            }
+            group ezsetup-me0 {
+                interface me0.0;
+            }
+            group PC-GRP {
+                interface irb.10;
+            }
+            group MAC-GRP {
+                interface irb.20;
+            }
+        }
+        web-management {
+            http;
+            https {
+                system-generated-certificate;
+            }
+        }
+    }
+    syslog {
+        user * {
+            any emergency;
+        }
+        file messages {
+            any notice;
+            authorization info;
+        }
+    }
+}
+chassis {
+    aggregated-devices {
+        ethernet {
+            device-count 1;
+        }
+    }
+}
+interfaces {
+    ge-0/0/0 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members PC-VLAN;
+                }
+            }
+        }
+    }
+    ge-0/0/1 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members PC-VLAN;
+                }
+            }
+        }
+    }
+    ge-0/0/2 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members PC-VLAN;
+                }
+            }
+        }
+    }
+    xe-0/1/0 {
+        enable;
+        unit 0 {
+            family inet;
+        }
+    }
+    xe-0/1/1 {
+        disable;
+    }
+    xe-0/1/2 {
+        disable;
+    }
+    ge-0/2/0 {
+        unit 0 {
+            family inet {
+                address 192.168.137.2/24;
+            }
+        }
+    }
+    ge-0/2/1 {
+        ether-options {
+            802.3ad ae0;
+        }
+    }
+    ge-0/2/2 {
+        ether-options {
+            802.3ad ae0;
+        }
+    }
+    ae0 {
+        aggregated-ether-options {
+            minimum-links 1;
+            lacp {
+                active;
+            }
+        }
+        unit 0 {
+            family ethernet-switching {
+                interface-mode trunk;
+                vlan {
+                    members [ 10 20 PC-VLAN MAC-VLAN ];
+                }
+            }
+        }
+    }
+    irb {
+        unit 10 {
+            family inet {
+                address 192.168.10.1/24;
+            }
+        }
+        unit 20 {
+            family inet {
+                address 192.168.20.1/24;
+            }
+        }
+    }
+    me0 {
+        unit 0 {
+            family inet {
+                address 192.168.2.1/24 {
+                    primary;
+                }
+            }
+        }
+    }
+}
+access {
+    address-assignment {
+        pool ezsetup-ge0 {
+            family inet {
+                network 192.168.1.0/24;
+                range limited {
+                    low 192.168.1.2;
+                    high 192.168.1.253;
+                }
+            }
+        }
+        pool ezsetup-me0 {
+            family inet {
+                network 192.168.2.0/24;
+                range limited {
+                    low 192.168.2.2;
+                    high 192.168.2.253;
+                }
+            }
+        }
+        pool PC-POOL {
+            family inet {
+                network 192.168.10.0/24;
+                range PCs {
+                    low 192.168.10.100;
+                    high 192.168.10.200;
+                }
+                dhcp-attributes {
+                    name-server {
+                        8.8.8.8;
+                    }
+                    router {
+                        192.168.10.1;
+                    }
+                }
+            }
+        }
+        pool MAC-POOL {
+            family inet {
+                network 192.168.20.0/24;
+                range MACs {
+                    low 192.168.20.100;
+                    high 192.168.20.200;
+                }
+                dhcp-attributes {
+                    name-server {
+                        8.8.8.8;
+                    }
+                    router {
+                        192.168.20.1;
+                    }
+                }
+            }
+        }
+    }
+}
+routing-options {
+    static {
+        route 0.0.0.0/0 next-hop 192.168.137.1;
+    }
+}
+vlans {
+    MAC-VLAN {
+        vlan-id 20;
+        l3-interface irb.20;
+    }
+    PC-VLAN {
+        vlan-id 10;
+        l3-interface irb.10;
+    }
+}
+
+
+{master:0}
+admin@FORD-JUN-SW1> show configuration | display set
+set version 20.4R3.8
+set system host-name FORD-JUN-SW1
+set system root-authentication encrypted-password "********"
+set system login retry-options tries-before-disconnect 3
+set system login retry-options backoff-threshold 3
+set system login retry-options backoff-factor 5
+set system login user admin uid 2000
+set system login user admin class super-user
+set system login user admin authentication encrypted-password "$6$JaW2LOQd$t59nP2rTvONBqnx5v09r8jDSaox0PZ9778zDTt41rOMVRkXQOGWd9YjreHdSPd8YvT5jxqN35c5qn49oJqyIK/"
+set system login user viewer uid 2001
+set system login user viewer class read-only
+set system login user viewer authentication encrypted-password "$6$o8qF6j9A$PjOFnrz.iJGVC50p3FGZtp/.g01P7MZBZbSdbbve8FR/XbaOrHmsitGPng7ljiy5avBG7KEBHizZvvAQmp6MQ/"
+set system services ssh root-login deny
+set system services ssh protocol-version v2
+set system services dhcp-local-server traceoptions file jdhcplog
+set system services dhcp-local-server traceoptions flag all
+set system services dhcp-local-server group ezsetup-ge0 interface ge-0/0/0.0
+set system services dhcp-local-server group ezsetup-me0 interface me0.0
+set system services dhcp-local-server group PC-GRP interface irb.10
+set system services dhcp-local-server group MAC-GRP interface irb.20
+set system services web-management http
+set system services web-management https system-generated-certificate
+set system syslog user * any emergency
+set system syslog file messages any notice
+set system syslog file messages authorization info
+set chassis aggregated-devices ethernet device-count 1
+set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members PC-VLAN
+set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members PC-VLAN
+set interfaces ge-0/0/2 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/2 unit 0 family ethernet-switching vlan members PC-VLAN
+set interfaces xe-0/1/0 enable
+set interfaces xe-0/1/0 unit 0 family inet
+set interfaces xe-0/1/1 disable
+set interfaces xe-0/1/2 disable
+set interfaces ge-0/2/0 unit 0 family inet address 192.168.137.2/24
+set interfaces ge-0/2/1 ether-options 802.3ad ae0
+set interfaces ge-0/2/2 ether-options 802.3ad ae0
+set interfaces ae0 aggregated-ether-options minimum-links 1
+set interfaces ae0 aggregated-ether-options lacp active
+set interfaces ae0 unit 0 family ethernet-switching interface-mode trunk
+set interfaces ae0 unit 0 family ethernet-switching vlan members 10
+set interfaces ae0 unit 0 family ethernet-switching vlan members 20
+set interfaces ae0 unit 0 family ethernet-switching vlan members PC-VLAN
+set interfaces ae0 unit 0 family ethernet-switching vlan members MAC-VLAN
+set interfaces irb unit 10 family inet address 192.168.10.1/24
+set interfaces irb unit 20 family inet address 192.168.20.1/24
+set interfaces me0 unit 0 family inet address 192.168.2.1/24 primary
+set access address-assignment pool ezsetup-ge0 family inet network 192.168.1.0/24
+set access address-assignment pool ezsetup-ge0 family inet range limited low 192.168.1.2
+set access address-assignment pool ezsetup-ge0 family inet range limited high 192.168.1.253
+set access address-assignment pool ezsetup-me0 family inet network 192.168.2.0/24
+set access address-assignment pool ezsetup-me0 family inet range limited low 192.168.2.2
+set access address-assignment pool ezsetup-me0 family inet range limited high 192.168.2.253
+set access address-assignment pool PC-POOL family inet network 192.168.10.0/24
+set access address-assignment pool PC-POOL family inet range PCs low 192.168.10.100
+set access address-assignment pool PC-POOL family inet range PCs high 192.168.10.200
+set access address-assignment pool PC-POOL family inet dhcp-attributes name-server 8.8.8.8
+set access address-assignment pool PC-POOL family inet dhcp-attributes router 192.168.10.1
+set access address-assignment pool MAC-POOL family inet network 192.168.20.0/24
+set access address-assignment pool MAC-POOL family inet range MACs low 192.168.20.100
+set access address-assignment pool MAC-POOL family inet range MACs high 192.168.20.200
+set access address-assignment pool MAC-POOL family inet dhcp-attributes name-server 8.8.8.8
+set access address-assignment pool MAC-POOL family inet dhcp-attributes router 192.168.20.1
+set routing-options static route 0.0.0.0/0 next-hop 192.168.137.1
+set vlans MAC-VLAN vlan-id 20
+set vlans MAC-VLAN l3-interface irb.20
+set vlans PC-VLAN vlan-id 10
+set vlans PC-VLAN l3-interface irb.10
+
+
+{master:0}
+admin@FORD-JUN-SW1>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+admin@FORD-JUN-SW2> show configuration
+## Last commit: 2024-08-15 08:56:34 UTC by admin
+version 20.4R3.8;
+system {
+    host-name FORD-JUN-SW2;
+    root-authentication {
+        encrypted-password "$6$dxjltSlS$d4OyfHYvj6AMnJmTfuuHOVn3qPjVOzpJJpz.Gkr8KbI2Pab.H3eY5Nq33skj0g0gszIdUtYyRfhl8fFZmEKfu1"; ## SECRET-DATA
+    }
+    login {
+        user admin {
+            uid 2008;
+            class super-user;
+            authentication {
+                encrypted-password "$6$xG9pyrz/$IS1nrjyEJAn5fNPdw.E39MQpeW5Z/jgiiZra37Kkv3wNzLapm9UHu4gWb3QIBCYCBGQOjUuP4ID1bel5yiBz31"; ## SECRET-DATA
+            }
+        }
+        user viewer {
+            uid 2010;
+            class read-only;
+            authentication {
+                encrypted-password "$6$auFUwOWW$8P.9MiHaUQxK39Wd8K9b9Av7.SqAGK7wLzNcyUQfFfJJBc4pLDc0nfLqr01lw1aJpEWEYPdfYPhzuVGJtWLrb/"; ## SECRET-DATA
+            }
+        }
+    }
+    services {
+        ssh {
+            root-login deny;
+            protocol-version v2;
+        }
+        dhcp-local-server {
+            traceoptions { ## Warning: 'traceoptions' is deprecated
+                file jdhcplog;
+                flag all;
+            }
+            group ezsetup-ge0 {
+                interface ge-0/0/0.0;
+            }
+            group ezsetup-me0 {
+                interface me0.0;
+            }
+        }
+        web-management {
+            http;
+        }
+    }
+    syslog {
+        user * {
+            any emergency;
+        }
+        file messages {
+            any notice;
+            authorization info;
+        }
+    }
+}
+chassis {
+    aggregated-devices {
+        ethernet {
+            device-count 1;
+        }
+    }
+}
+interfaces {
+    ge-0/0/0 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members MAC-VLAN;
+                }
+            }
+        }
+    }
+    ge-0/0/1 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members MAC-VLAN;
+                }
+            }
+        }
+    }
+    ge-0/0/2 {
+        unit 0 {
+            family ethernet-switching {
+                interface-mode access;
+                vlan {
+                    members MAC-VLAN;
+                }
+            }
+        }
+    }
+    ge-0/2/1 {
+        ether-options {
+            802.3ad ae0;
+        }
+    }
+    ge-0/2/2 {
+        ether-options {
+            802.3ad ae0;
+        }
+    }
+    ae0 {
+        aggregated-ether-options {
+            minimum-links 1;
+            lacp {
+                active;
+            }
+        }
+        unit 0 {
+            family ethernet-switching {
+                interface-mode trunk;
+                vlan {
+                    members [ 10 20 PC-VLAN MAC-VLAN ];
+                }
+            }
+        }
+    }
+    me0 {
+        unit 0 {
+            family inet {
+                address 192.168.2.1/24 {
+                    primary;
+                }
+            }
+        }
+    }
+}
+access {
+    address-assignment {
+        pool ezsetup-ge0 {
+            family inet {
+                network 192.168.1.0/24;
+                range limited {
+                    low 192.168.1.2;
+                    high 192.168.1.253;
+                }
+            }
+        }
+        pool ezsetup-me0 {
+            family inet {
+                network 192.168.2.0/24;
+                range limited {
+                    low 192.168.2.2;
+                    high 192.168.2.253;
+                }
+            }
+        }
+    }
+}
+vlans {
+    MAC-VLAN {
+        vlan-id 20;
+    }
+    PC-VLAN {
+        vlan-id 10;
+    }
+}
+
+
+{master:0}
+admin@FORD-JUN-SW2> show configuration | display set
+set version 20.4R3.8
+set system host-name FORD-JUN-SW2
+set system root-authentication encrypted-password "$6$dxjltSlS$d4OyfHYvj6AMnJmTfuuHOVn3qPjVOzpJJpz.Gkr8KbI2Pab.H3eY5Nq33skj0g0gszIdUtYyRfhl8fFZmEKfu1"
+set system login user admin uid 2008
+set system login user admin class super-user
+set system login user admin authentication encrypted-password "$6$xG9pyrz/$IS1nrjyEJAn5fNPdw.E39MQpeW5Z/jgiiZra37Kkv3wNzLapm9UHu4gWb3QIBCYCBGQOjUuP4ID1bel5yiBz31"
+set system login user viewer uid 2010
+set system login user viewer class read-only
+set system login user viewer authentication encrypted-password "$6$auFUwOWW$8P.9MiHaUQxK39Wd8K9b9Av7.SqAGK7wLzNcyUQfFfJJBc4pLDc0nfLqr01lw1aJpEWEYPdfYPhzuVGJtWLrb/"
+set system services ssh root-login deny
+set system services ssh protocol-version v2
+set system services dhcp-local-server traceoptions file jdhcplog
+set system services dhcp-local-server traceoptions flag all
+set system services dhcp-local-server group ezsetup-ge0 interface ge-0/0/0.0
+set system services dhcp-local-server group ezsetup-me0 interface me0.0
+set system services web-management http
+set system syslog user * any emergency
+set system syslog file messages any notice
+set system syslog file messages authorization info
+set chassis aggregated-devices ethernet device-count 1
+set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members MAC-VLAN
+set interfaces ge-0/0/1 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/1 unit 0 family ethernet-switching vlan members MAC-VLAN
+set interfaces ge-0/0/2 unit 0 family ethernet-switching interface-mode access
+set interfaces ge-0/0/2 unit 0 family ethernet-switching vlan members MAC-VLAN
+set interfaces ge-0/2/1 ether-options 802.3ad ae0
+set interfaces ge-0/2/2 ether-options 802.3ad ae0
+set interfaces ae0 aggregated-ether-options minimum-links 1
+set interfaces ae0 aggregated-ether-options lacp active
+set interfaces ae0 unit 0 family ethernet-switching interface-mode trunk
+set interfaces ae0 unit 0 family ethernet-switching vlan members 10
+set interfaces ae0 unit 0 family ethernet-switching vlan members 20
+set interfaces ae0 unit 0 family ethernet-switching vlan members PC-VLAN
+set interfaces ae0 unit 0 family ethernet-switching vlan members MAC-VLAN
+set interfaces me0 unit 0 family inet address 192.168.2.1/24 primary
+set access address-assignment pool ezsetup-ge0 family inet network 192.168.1.0/24
+set access address-assignment pool ezsetup-ge0 family inet range limited low 192.168.1.2
+set access address-assignment pool ezsetup-ge0 family inet range limited high 192.168.1.253
+set access address-assignment pool ezsetup-me0 family inet network 192.168.2.0/24
+set access address-assignment pool ezsetup-me0 family inet range limited low 192.168.2.2
+set access address-assignment pool ezsetup-me0 family inet range limited high 192.168.2.253
+set vlans MAC-VLAN vlan-id 20
+set vlans PC-VLAN vlan-id 10
+
+
+{master:0}
+admin@FORD-JUN-SW2>
